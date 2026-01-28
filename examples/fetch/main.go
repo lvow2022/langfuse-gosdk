@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	langfuse "github.com/lvow2022/langfuse-gosdk/langfuse"
 )
@@ -149,23 +150,138 @@ func printTrace(trace *langfuse.TraceWithFullDetails) {
 		fmt.Printf("    %s\n", metadataJSON)
 	}
 
-	// Observations
+	// Observations (Spans/Generations/Tools)
 	fmt.Printf("  Observations: %d\n", len(trace.Observations))
 	for i, obs := range trace.Observations {
-		fmt.Printf("    [%d] Type: %s", i+1, obs.Type)
+		fmt.Printf("\n    ┌─ [%d] %s", i+1, obs.Type)
 		if obs.Name != nil {
-			fmt.Printf(", Name: %s", *obs.Name)
-		}
-		if obs.Model != nil {
-			fmt.Printf(", Model: %s", *obs.Model)
-		}
-		if obs.Usage != nil {
-			fmt.Printf(", Usage: input=%d, output=%d, total=%d",
-				ptrToInt(obs.Usage.Input),
-				ptrToInt(obs.Usage.Output),
-				ptrToInt(obs.Usage.Total))
+			fmt.Printf(" - %s", *obs.Name)
 		}
 		fmt.Println()
+
+		// Time information
+		fmt.Printf("    │  Time: %s", obs.StartTime)
+		if obs.EndTime != nil {
+			fmt.Printf(" → %s", *obs.EndTime)
+			// Calculate duration
+			if startTime, err := time.Parse(time.RFC3339Nano, obs.StartTime); err == nil {
+				if endTime, err := time.Parse(time.RFC3339Nano, *obs.EndTime); err == nil {
+					duration := endTime.Sub(startTime)
+					fmt.Printf(" (duration: %v)", duration.Round(time.Millisecond))
+				}
+			}
+		}
+		fmt.Println()
+
+		// Level and Status
+		if obs.Level != nil || obs.StatusMessage != nil {
+			fmt.Printf("    │  Status: ")
+			if obs.Level != nil {
+				fmt.Printf("%s", *obs.Level)
+			}
+			if obs.StatusMessage != nil {
+				if obs.Level != nil {
+					fmt.Printf(", ")
+				}
+				fmt.Printf("%s", *obs.StatusMessage)
+			}
+			fmt.Println()
+		}
+
+		// Model & Usage (for GENERATION type)
+		if obs.Type == "GENERATION" {
+			if obs.Model != nil {
+				fmt.Printf("    │  Model: %s\n", *obs.Model)
+			}
+			if obs.ModelParameters != nil && len(obs.ModelParameters) > 0 {
+				fmt.Printf("    │  Model Parameters: %v\n", obs.ModelParameters)
+			}
+			if obs.Usage != nil {
+				fmt.Printf("    │  Usage: input=%d, output=%d, total=%d\n",
+					ptrToInt(obs.Usage.Input),
+					ptrToInt(obs.Usage.Output),
+					ptrToInt(obs.Usage.Total))
+			}
+		}
+
+		// Input (show preview)
+		if obs.Input != nil {
+			fmt.Printf("    │  Input: ")
+			switch v := obs.Input.(type) {
+			case string:
+				if len(v) > 100 {
+					fmt.Printf("%.100s... (truncated)", v)
+				} else {
+					fmt.Printf("%s", v)
+				}
+			case map[string]interface{}:
+				// Show key fields
+				if msg, ok := v["message"]; ok {
+					fmt.Printf("message: %v", truncateString(fmt.Sprintf("%v", msg), 100))
+				} else if len(v) > 0 {
+					// Show first few keys
+					keys := make([]string, 0, min(3, len(v)))
+					for k := range v {
+						keys = append(keys, k)
+						if len(keys) >= 3 {
+							break
+						}
+					}
+					fmt.Printf("keys: %v", keys)
+				} else {
+					fmt.Printf("%v", v)
+				}
+			case []interface{}:
+				fmt.Printf("[%d items]", len(v))
+			default:
+				fmt.Printf("%v", v)
+			}
+			fmt.Println()
+		}
+
+		// Output (show preview)
+		if obs.Output != nil {
+			fmt.Printf("    │  Output: ")
+			switch v := obs.Output.(type) {
+			case string:
+				if len(v) > 100 {
+					fmt.Printf("%.100s... (truncated)", v)
+				} else {
+					fmt.Printf("%s", v)
+				}
+			case map[string]interface{}:
+				// Show key fields
+				if answer, ok := v["answer"]; ok {
+					fmt.Printf("answer: %v", truncateString(fmt.Sprintf("%v", answer), 100))
+				} else if result, ok := v["result"]; ok {
+					fmt.Printf("result: %v", truncateString(fmt.Sprintf("%v", result), 100))
+				} else if len(v) > 0 {
+					// Show first few keys
+					keys := make([]string, 0, min(3, len(v)))
+					for k := range v {
+						keys = append(keys, k)
+						if len(keys) >= 3 {
+							break
+						}
+					}
+					fmt.Printf("keys: %v", keys)
+				} else {
+					fmt.Printf("%v", v)
+				}
+			case []interface{}:
+				fmt.Printf("[%d items]", len(v))
+			default:
+				fmt.Printf("%v", v)
+			}
+			fmt.Println()
+		}
+
+		// Parent observation ID
+		if obs.ParentObservationID != nil {
+			fmt.Printf("    │  Parent: %s\n", *obs.ParentObservationID)
+		}
+
+		fmt.Printf("    └─────────────────────────────────\n")
 	}
 
 	// Scores
@@ -220,4 +336,12 @@ func ptrToInt(p *int) int {
 		return 0
 	}
 	return *p
+}
+
+// truncateString truncates a string to max length and adds ellipsis if needed
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
