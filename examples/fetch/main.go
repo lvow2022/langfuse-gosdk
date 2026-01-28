@@ -204,76 +204,32 @@ func printTrace(trace *langfuse.TraceWithFullDetails) {
 			}
 		}
 
-		// Input (show preview)
+		// Input (show full content)
 		if obs.Input != nil {
-			fmt.Printf("    │  Input: ")
-			switch v := obs.Input.(type) {
-			case string:
-				if len(v) > 100 {
-					fmt.Printf("%.100s... (truncated)", v)
-				} else {
-					fmt.Printf("%s", v)
-				}
-			case map[string]interface{}:
-				// Show key fields
-				if msg, ok := v["message"]; ok {
-					fmt.Printf("message: %v", truncateString(fmt.Sprintf("%v", msg), 100))
-				} else if len(v) > 0 {
-					// Show first few keys
-					keys := make([]string, 0, min(3, len(v)))
-					for k := range v {
-						keys = append(keys, k)
-						if len(keys) >= 3 {
-							break
-						}
-					}
-					fmt.Printf("keys: %v", keys)
-				} else {
-					fmt.Printf("%v", v)
-				}
-			case []interface{}:
-				fmt.Printf("[%d items]", len(v))
-			default:
-				fmt.Printf("%v", v)
+			fmt.Printf("    │  Input:\n")
+			inputJSON, _ := json.MarshalIndent(obs.Input, "      ", "  ")
+			// Truncate if too long (more than 500 chars)
+			inputStr := string(inputJSON)
+			if len(inputStr) > 500 {
+				fmt.Printf("      %s... (truncated, %d chars)\n",
+					truncateString(inputStr, 500), len(inputStr))
+			} else {
+				fmt.Printf("      %s\n", inputStr)
 			}
-			fmt.Println()
 		}
 
-		// Output (show preview)
+		// Output (show full content)
 		if obs.Output != nil {
-			fmt.Printf("    │  Output: ")
-			switch v := obs.Output.(type) {
-			case string:
-				if len(v) > 100 {
-					fmt.Printf("%.100s... (truncated)", v)
-				} else {
-					fmt.Printf("%s", v)
-				}
-			case map[string]interface{}:
-				// Show key fields
-				if answer, ok := v["answer"]; ok {
-					fmt.Printf("answer: %v", truncateString(fmt.Sprintf("%v", answer), 100))
-				} else if result, ok := v["result"]; ok {
-					fmt.Printf("result: %v", truncateString(fmt.Sprintf("%v", result), 100))
-				} else if len(v) > 0 {
-					// Show first few keys
-					keys := make([]string, 0, min(3, len(v)))
-					for k := range v {
-						keys = append(keys, k)
-						if len(keys) >= 3 {
-							break
-						}
-					}
-					fmt.Printf("keys: %v", keys)
-				} else {
-					fmt.Printf("%v", v)
-				}
-			case []interface{}:
-				fmt.Printf("[%d items]", len(v))
-			default:
-				fmt.Printf("%v", v)
+			fmt.Printf("    │  Output:\n")
+			outputJSON, _ := json.MarshalIndent(obs.Output, "      ", "  ")
+			// Truncate if too long (more than 500 chars)
+			outputStr := string(outputJSON)
+			if len(outputStr) > 500 {
+				fmt.Printf("      %s... (truncated, %d chars)\n",
+					truncateString(outputStr, 500), len(outputStr))
+			} else {
+				fmt.Printf("      %s\n", outputStr)
 			}
-			fmt.Println()
 		}
 
 		// Parent observation ID
