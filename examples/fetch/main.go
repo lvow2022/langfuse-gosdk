@@ -207,8 +207,23 @@ func printTrace(trace *langfuse.TraceWithFullDetails) {
 		// Input (show full content)
 		if obs.Input != nil {
 			fmt.Printf("    │  Input:\n")
-			inputJSON, _ := json.MarshalIndent(obs.Input, "      ", "  ")
-			// Truncate if too long (more than 500 chars)
+
+			// Handle JSON string (API returns data as string)
+			var inputData interface{}
+			switch v := obs.Input.(type) {
+			case string:
+				// Try to parse as JSON
+				if err := json.Unmarshal([]byte(v), &inputData); err == nil {
+					// Successfully parsed
+				} else {
+					// Not JSON, use as-is
+					inputData = v
+				}
+			default:
+				inputData = v
+			}
+
+			inputJSON, _ := json.MarshalIndent(inputData, "      ", "  ")
 			inputStr := string(inputJSON)
 			if len(inputStr) > 500 {
 				fmt.Printf("      %s... (truncated, %d chars)\n",
@@ -221,8 +236,23 @@ func printTrace(trace *langfuse.TraceWithFullDetails) {
 		// Output (show full content)
 		if obs.Output != nil {
 			fmt.Printf("    │  Output:\n")
-			outputJSON, _ := json.MarshalIndent(obs.Output, "      ", "  ")
-			// Truncate if too long (more than 500 chars)
+
+			// Handle JSON string (API returns data as string)
+			var outputData interface{}
+			switch v := obs.Output.(type) {
+			case string:
+				// Try to parse as JSON
+				if err := json.Unmarshal([]byte(v), &outputData); err == nil {
+					// Successfully parsed
+				} else {
+					// Not JSON, use as-is
+					outputData = v
+				}
+			default:
+				outputData = v
+			}
+
+			outputJSON, _ := json.MarshalIndent(outputData, "      ", "  ")
 			outputStr := string(outputJSON)
 			if len(outputStr) > 500 {
 				fmt.Printf("      %s... (truncated, %d chars)\n",
