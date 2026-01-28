@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	langfuse "github.com/langfuse/langfuse-go/langfuse"
+	langfuse "github.com/lvow2022/langfuse-gosdk/langfuse"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -623,15 +623,13 @@ func main() {
 
 			for j, tc := range assistantMsg.ToolCalls {
 				toolStartTime := time.Now()
-				result := executeTool(tc)
-				toolEndTime := time.Now()
 
 				// 解析参数
 				var argsMap map[string]any
 				json.Unmarshal([]byte(tc.Function.Arguments), &argsMap)
 
-				// 创建 Tool 观测
-				trace.CreateTool(langfuse.ToolParams{
+				// 创建 Tool 观测（开始时）
+				toolID, _ := trace.CreateTool(langfuse.ToolParams{
 					SpanParams: langfuse.SpanParams{
 						ObservationParams: langfuse.ObservationParams{
 							Name: ptr(fmt.Sprintf("tool-%s", tc.Function.Name)),
@@ -640,14 +638,26 @@ func main() {
 								"tool_id":   tc.ID,
 								"arguments": argsMap,
 							},
-							Output: map[string]any{
-								"result": result,
-							},
 							StartTime: &toolStartTime,
 							Metadata: map[string]any{
 								"tool_index":   j,
 								"round":        i + 1,
 								"tool_call_id": tc.ID,
+							},
+						},
+					},
+				})
+
+				// 执行工具
+				result := executeTool(tc)
+				toolEndTime := time.Now()
+
+				// 更新 Tool 观测（完成时）
+				langfuseClient.UpdateTool(toolID, langfuse.ToolParams{
+					SpanParams: langfuse.SpanParams{
+						ObservationParams: langfuse.ObservationParams{
+							Output: map[string]any{
+								"result": result,
 							},
 						},
 						EndTime: &toolEndTime,
