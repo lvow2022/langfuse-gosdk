@@ -23,9 +23,9 @@ func ptr[T any](v T) *T {
 
 func main() {
 	// 从环境变量加载配置
-	publicKey := getEnv("LANGFUSE_PUBLIC_KEY", "")
-	secretKey := getEnv("LANGFUSE_SECRET_KEY", "")
-	baseURL := getEnv("LANGFUSE_BASE_URL", "http://localhost:3000")
+	publicKey := getEnv("LANGFUSE_PUBLIC_KEY", "pk-lf-613f327a-210d-492d-9b0e-1d15ff456dba")
+	secretKey := getEnv("LANGFUSE_SECRET_KEY", "sk-lf-dd707fbc-d87d-497a-86c0-7a464af5cfca")
+	baseURL := getEnv("LANGFUSE_BASE_URL", "http://192.168.0.55:3000")
 
 	if publicKey == "" || secretKey == "" {
 		log.Fatal("LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY must be set")
@@ -56,7 +56,7 @@ func main() {
 	// 示例 1: 获取单个 Trace
 	// ==========================================
 	// 替换为实际存在的 trace ID
-	traceID := getEnv("TRACE_ID", "")
+	traceID := getEnv("TRACE_ID", "2f8e2eb5-4b69-47d2-91cf-975cac523b3b")
 	if traceID != "" {
 		fmt.Printf("=== Example 1: Fetching Trace by ID ===\n")
 		fmt.Printf("Trace ID: %s\n\n", traceID)
@@ -186,14 +186,14 @@ func printTrace(trace *langfuse.TraceWithFullDetails) {
 	fmt.Printf("  Tags: %v\n", trace.Tags)
 
 	// Input
-	if len(trace.Input) > 0 {
+	if trace.Input != nil {
 		fmt.Println("  Input:")
 		inputJSON, _ := json.MarshalIndent(trace.Input, "    ", "  ")
 		fmt.Printf("    %s\n", inputJSON)
 	}
 
 	// Output
-	if len(trace.Output) > 0 {
+	if trace.Output != nil {
 		fmt.Println("  Output:")
 		outputJSON, _ := json.MarshalIndent(trace.Output, "    ", "  ")
 		fmt.Printf("    %s\n", outputJSON)
@@ -250,15 +250,19 @@ func printSession(session *langfuse.SessionWithTraces) {
 		}
 		fmt.Printf("    Timestamp: %s\n", trace.Timestamp)
 
-		if len(trace.Input) > 0 {
-			if msg, ok := trace.Input["message"]; ok {
-				fmt.Printf("    Input Message: %v\n", msg)
+		if trace.Input != nil {
+			if inputMap, ok := trace.Input.(map[string]interface{}); ok {
+				if msg, exists := inputMap["message"]; exists {
+					fmt.Printf("    Input Message: %v\n", msg)
+				}
 			}
 		}
 
-		if len(trace.Output) > 0 {
-			if answer, ok := trace.Output["answer"]; ok {
-				fmt.Printf("    Output Answer: %v\n", answer)
+		if trace.Output != nil {
+			if outputMap, ok := trace.Output.(map[string]interface{}); ok {
+				if answer, exists := outputMap["answer"]; exists {
+					fmt.Printf("    Output Answer: %v\n", answer)
+				}
 			}
 		}
 
@@ -298,13 +302,21 @@ func reconstructContext(trace *langfuse.TraceWithFullDetails) {
 	fmt.Println("Reconstructing conversation from trace data:\n")
 
 	// 从 Input 提取用户消息
-	if userMsg, ok := trace.Input["message"].(string); ok {
-		fmt.Printf("User Input:\n  %s\n\n", userMsg)
+	if trace.Input != nil {
+		if inputMap, ok := trace.Input.(map[string]interface{}); ok {
+			if userMsg, exists := inputMap["message"]; exists {
+				fmt.Printf("User Input:\n  %v\n\n", userMsg)
+			}
+		}
 	}
 
 	// 从 Output 提取助手回复
-	if assistantMsg, ok := trace.Output["answer"].(string); ok {
-		fmt.Printf("Assistant Output:\n  %s\n\n", assistantMsg)
+	if trace.Output != nil {
+		if outputMap, ok := trace.Output.(map[string]interface{}); ok {
+			if assistantMsg, exists := outputMap["answer"]; exists {
+				fmt.Printf("Assistant Output:\n  %v\n\n", assistantMsg)
+			}
+		}
 	}
 
 	// 从 Observations 提取详细信息

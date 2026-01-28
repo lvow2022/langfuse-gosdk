@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	langfuse "github.com/lvow2022/langfuse-gosdk/langfuse"
+
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -49,10 +50,10 @@ func LoadConfig() *Config {
 // ReplayContext 存储完整会话上下文，支持 replay 功能
 type ReplayContext struct {
 	// 会话标识
-	SessionID   string    `json:"session_id"`
-	UserID      string    `json:"user_id"`
-	TraceID     string    `json:"trace_id"`
-	Timestamp   time.Time `json:"timestamp"`
+	SessionID string    `json:"session_id"`
+	UserID    string    `json:"user_id"`
+	TraceID   string    `json:"trace_id"`
+	Timestamp time.Time `json:"timestamp"`
 
 	// 模型配置
 	ModelConfig ModelConfig `json:"model_config"`
@@ -72,21 +73,21 @@ type ReplayContext struct {
 
 // ModelConfig 模型配置
 type ModelConfig struct {
-	Model           string                 `json:"model"`
-	BaseURL         string                 `json:"base_url"`
-	Temperature     float64                `json:"temperature"`
-	MaxTokens       int                    `json:"max_tokens"`
-	TopP            float64                `json:"top_p"`
-	FrequencyPenalty float64               `json:"frequency_penalty"`
-	PresencePenalty  float64               `json:"presence_penalty"`
-	ExtraParams     map[string]interface{} `json:"extra_params,omitempty"`
+	Model            string                 `json:"model"`
+	BaseURL          string                 `json:"base_url"`
+	Temperature      float64                `json:"temperature"`
+	MaxTokens        int                    `json:"max_tokens"`
+	TopP             float64                `json:"top_p"`
+	FrequencyPenalty float64                `json:"frequency_penalty"`
+	PresencePenalty  float64                `json:"presence_penalty"`
+	ExtraParams      map[string]interface{} `json:"extra_params,omitempty"`
 }
 
 // SystemPrompt 系统提示
 type SystemPrompt struct {
-	Content   string            `json:"content"`
-	Role      string            `json:"role"` // system, user, etc.
-	Metadata  map[string]any    `json:"metadata,omitempty"`
+	Content  string         `json:"content"`
+	Role     string         `json:"role"` // system, user, etc.
+	Metadata map[string]any `json:"metadata,omitempty"`
 }
 
 // ToolDefinition 工具定义
@@ -98,9 +99,9 @@ type ToolDefinition struct {
 // ConversationTurn 对话轮次
 type ConversationTurn struct {
 	// 轮次信息
-	Round       int    `json:"round"`
-	Timestamp   string `json:"timestamp"`
-	TurnID      string `json:"turn_id"` // trace ID for this turn
+	Round     int    `json:"round"`
+	Timestamp string `json:"timestamp"`
+	TurnID    string `json:"turn_id"` // trace ID for this turn
 
 	// 用户输入
 	UserInput UserMessage `json:"user_input"`
@@ -126,21 +127,21 @@ type LLMResponse struct {
 	Role         string `json:"role"` // assistant
 	Content      string `json:"content"`
 	ToolCalls    bool   `json:"tool_calls"`
-	Reasoning    string `json:"reasoning,omitempty"`    // 模型的推理过程（如果有）
+	Reasoning    string `json:"reasoning,omitempty"`     // 模型的推理过程（如果有）
 	FinishReason string `json:"finish_reason,omitempty"` // stop, tool_calls, length, etc.
 }
 
 // ToolCallExecution 工具调用执行
 type ToolCallExecution struct {
-	ToolName  string                 `json:"tool_name"`
-	ToolID    string                 `json:"tool_id"`
-	Arguments map[string]interface{} `json:"arguments"`
-	Result    string                 `json:"result"`
-	StartTime string                 `json:"start_time"`
-	EndTime   string                 `json:"end_time"`
-	DurationMs int64                 `json:"duration_ms"`
-	Success   bool                   `json:"success"`
-	Error     string                 `json:"error,omitempty"`
+	ToolName   string                 `json:"tool_name"`
+	ToolID     string                 `json:"tool_id"`
+	Arguments  map[string]interface{} `json:"arguments"`
+	Result     string                 `json:"result"`
+	StartTime  string                 `json:"start_time"`
+	EndTime    string                 `json:"end_time"`
+	DurationMs int64                  `json:"duration_ms"`
+	Success    bool                   `json:"success"`
+	Error      string                 `json:"error,omitempty"`
 }
 
 // TokenUsage Token 使用统计
@@ -152,12 +153,12 @@ type TokenUsage struct {
 
 // SessionMetadata 会话元数据
 type SessionMetadata struct {
-	Environment         string            `json:"environment"`
-	Tags                []string          `json:"tags"`
-	CustomFields        map[string]any    `json:"custom_fields,omitempty"`
-	ResponseTimeMs      int64             `json:"response_time_ms"`
-	TotalCost           float64           `json:"total_cost,omitempty"`
-	AdditionalInfo      map[string]any    `json:"additional_info,omitempty"`
+	Environment    string         `json:"environment"`
+	Tags           []string       `json:"tags"`
+	CustomFields   map[string]any `json:"custom_fields,omitempty"`
+	ResponseTimeMs int64          `json:"response_time_ms"`
+	TotalCost      float64        `json:"total_cost,omitempty"`
+	AdditionalInfo map[string]any `json:"additional_info,omitempty"`
 }
 
 // ============================================
@@ -178,8 +179,8 @@ type ContextBuilder struct {
 // NewContextBuilder 创建新的上下文构建器
 func NewContextBuilder(userID, baseURL, model string) *ContextBuilder {
 	return &ContextBuilder{
-		userID:      userID,
-		baseURL:     baseURL,
+		userID:  userID,
+		baseURL: baseURL,
 		modelConfig: ModelConfig{
 			Model:       model,
 			BaseURL:     baseURL,
@@ -211,7 +212,7 @@ func (b *ContextBuilder) SetTools(tools []openai.Tool) *ContextBuilder {
 	b.tools = make([]ToolDefinition, len(tools))
 	for i, tool := range tools {
 		b.tools[i] = ToolDefinition{
-			Type:     string(tool.Type),
+			Type: string(tool.Type),
 			Function: map[string]interface{}{
 				"name":        tool.Function.Name,
 				"description": tool.Function.Description,
@@ -291,8 +292,8 @@ func (r *ReplayContext) ToOpenAIMessages() []openai.ChatCompletionMessage {
 		// 添加工具调用消息
 		for _, tc := range turn.ToolCalls {
 			messages = append(messages, openai.ChatCompletionMessage{
-				Role:    openai.ChatMessageRoleTool,
-				Content: tc.Result,
+				Role:       openai.ChatMessageRoleTool,
+				Content:    tc.Result,
 				ToolCallID: tc.ToolID,
 			})
 		}
@@ -456,9 +457,9 @@ func main() {
 		case "get_weather":
 			city, _ := args["city"].(string)
 			weatherData := map[string]string{
-				"北京":   "22°C, 晴天",
-				"上海":   "26°C, 多云",
-				"Tokyo":  "20°C, Rainy",
+				"北京":    "22°C, 晴天",
+				"上海":    "26°C, 多云",
+				"Tokyo": "20°C, Rainy",
 			}
 			if w, ok := weatherData[city]; ok {
 				return fmt.Sprintf("Weather in %s: %s", city, w)
@@ -512,9 +513,9 @@ func main() {
 			UserID:    &userID,
 			SessionID: &sessionID,
 			Metadata: map[string]any{
-				"model":      cfg.OpenAIModel,
-				"round":      i + 1,
-				"category":   qa.category,
+				"model":       cfg.OpenAIModel,
+				"round":       i + 1,
+				"category":    qa.category,
 				"has_context": true, // 标记此 trace 包含 replay 上下文
 			},
 			Tags: []string{"chat", qa.category, "replay-enabled"},
@@ -537,9 +538,9 @@ func main() {
 				Input:     map[string]any{"query": qa.question, "retriever": "vector-store"},
 				StartTime: &ragStartTime,
 				Metadata: map[string]any{
-					"retrieval_method":    "semantic_search",
-					"top_k":               3,
-					"index_name":          "knowledge-base-v1",
+					"retrieval_method":      "semantic_search",
+					"top_k":                 3,
+					"index_name":            "knowledge-base-v1",
 					"retrieval_duration_ms": 100, // 预期检索耗时
 				},
 			},
@@ -575,7 +576,7 @@ func main() {
 					Name:      ptr(fmt.Sprintf("llm-generation-round-%d", i+1)),
 					StartTime: &genStartTime,
 					// 只包含实际传给 LLM 的输入，便于后续 replay 直接使用
-					Input:     messages,
+					Input: messages,
 				},
 			},
 		}
@@ -590,11 +591,12 @@ func main() {
 		})
 		if err != nil {
 			genEndTime := time.Now()
+			level := langfuse.LevelError
 			updateParams := langfuse.GenerationParams{
 				SpanParams: langfuse.SpanParams{
 					ObservationParams: langfuse.ObservationParams{
 						StatusMessage: ptr(err.Error()),
-						Level:         ptr(langfuse.LevelError),
+						Level:         &level,
 					},
 					EndTime: &genEndTime,
 				},
@@ -666,14 +668,14 @@ func main() {
 
 				// 记录工具执行（用于 replay）
 				toolExecutions = append(toolExecutions, ToolCallExecution{
-					ToolName:  tc.Function.Name,
-					ToolID:    tc.ID,
-					Arguments: argsMap,
-					Result:    result,
-					StartTime: toolStartTime.Format(time.RFC3339Nano),
-					EndTime:   toolEndTime.Format(time.RFC3339Nano),
+					ToolName:   tc.Function.Name,
+					ToolID:     tc.ID,
+					Arguments:  argsMap,
+					Result:     result,
+					StartTime:  toolStartTime.Format(time.RFC3339Nano),
+					EndTime:    toolEndTime.Format(time.RFC3339Nano),
 					DurationMs: toolEndTime.Sub(toolStartTime).Milliseconds(),
-					Success:   true,
+					Success:    true,
 				})
 
 				toolCallsDetailed = append(toolCallsDetailed, map[string]any{
@@ -820,9 +822,9 @@ func main() {
 
 	summaryTrace.Update(langfuse.TraceParams{
 		Output: map[string]any{
-			"completed_rounds": len(questions),
-			"session_id":       sessionID,
-			"replay_context":   finalReplayCtx,
+			"completed_rounds":    len(questions),
+			"session_id":          sessionID,
+			"replay_context":      finalReplayCtx,
 			"replay_context_json": finalContextJSON, // 同时存储 JSON 字符串便于导出
 		},
 	})
@@ -834,7 +836,9 @@ func main() {
 
 	flushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	langfuseClient.Flush(flushCtx)
+	if err := langfuseClient.Flush(flushCtx); err != nil {
+		log.Printf("Warning: failed to flush events: %v", err)
+	}
 
 	// 显示 replay 上下文示例
 	fmt.Println("\n--- Replay Context Example (Last Round) ---")

@@ -12,17 +12,49 @@ import (
 
 // TraceWithFullDetails represents a trace with all nested observations
 type TraceWithFullDetails struct {
-	ID           string                 `json:"id"`
-	Name         *string                `json:"name,omitempty"`
-	UserID       *string                `json:"userId,omitempty"`
-	SessionID    *string                `json:"sessionId,omitempty"`
-	Timestamp    string                 `json:"timestamp"`
-	Input        map[string]interface{} `json:"input,omitempty"`
-	Output       map[string]interface{} `json:"output,omitempty"`
+	ID           string                `json:"id"`
+	Name         *string               `json:"name,omitempty"`
+	UserID       *string               `json:"userId,omitempty"`
+	SessionID    *string               `json:"sessionId,omitempty"`
+	Timestamp    string                `json:"timestamp"`
+	Input        interface{}           `json:"input,omitempty"`
+	Output       interface{}           `json:"output,omitempty"`
 	Metadata     map[string]interface{} `json:"metadata,omitempty"`
-	Tags         []string               `json:"tags,omitempty"`
-	Observations []ObservationDetails   `json:"observations,omitempty"`
-	Scores       []ScoreData            `json:"scores,omitempty"`
+	Tags         []string              `json:"tags,omitempty"`
+	Observations []ObservationDetails  `json:"observations,omitempty"`
+	Scores       []ScoreData           `json:"scores,omitempty"`
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for TraceWithFullDetails
+// to handle cases where observations might be a string, null, or array
+func (t *TraceWithFullDetails) UnmarshalJSON(data []byte) error {
+	// Define a local type to avoid infinite recursion
+	type Alias TraceWithFullDetails
+	aux := &struct {
+		Observations json.RawMessage `json:"observations"`
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Handle observations field
+	if len(aux.Observations) > 0 && string(aux.Observations) != "null" {
+		// Try to unmarshal as array first
+		var obsArray []ObservationDetails
+		if err := json.Unmarshal(aux.Observations, &obsArray); err != nil {
+			// If that fails, it might be a string or other format
+			// For now, just leave it empty
+			t.Observations = nil
+		} else {
+			t.Observations = obsArray
+		}
+	}
+
+	return nil
 }
 
 // ScoreData represents a score retrieved from API
@@ -40,23 +72,23 @@ type ScoreData struct {
 
 // ObservationDetails represents an observation (span, generation, event, tool)
 type ObservationDetails struct {
-	ID                string                 `json:"id"`
-	TraceID           string                 `json:"traceId"`
-	Type              string                 `json:"type"` // SPAN, GENERATION, EVENT, TOOL
-	Name              *string                `json:"name,omitempty"`
-	StartTime         string                 `json:"startTime"`
-	EndTime           *string                `json:"endTime,omitempty"`
-	CompletionStartTime *string              `json:"completionStartTime,omitempty"`
-	Input             map[string]interface{} `json:"input,omitempty"`
-	Output            map[string]interface{} `json:"output,omitempty"`
+	ID                string         `json:"id"`
+	TraceID           string         `json:"traceId"`
+	Type              string         `json:"type"` // SPAN, GENERATION, EVENT, TOOL
+	Name              *string        `json:"name,omitempty"`
+	StartTime         string         `json:"startTime"`
+	EndTime           *string        `json:"endTime,omitempty"`
+	CompletionStartTime *string      `json:"completionStartTime,omitempty"`
+	Input             interface{}    `json:"input,omitempty"`
+	Output            interface{}    `json:"output,omitempty"`
 	Metadata          map[string]interface{} `json:"metadata,omitempty"`
-	Level             *string                `json:"level,omitempty"`
-	StatusMessage     *string                `json:"statusMessage,omitempty"`
-	ParentObservationID *string              `json:"parentObservationId,omitempty"`
-	Version           *string                `json:"version,omitempty"`
-	Model             *string                `json:"model,omitempty"`
+	Level             *string        `json:"level,omitempty"`
+	StatusMessage     *string        `json:"statusMessage,omitempty"`
+	ParentObservationID *string      `json:"parentObservationId,omitempty"`
+	Version           *string        `json:"version,omitempty"`
+	Model             *string        `json:"model,omitempty"`
 	ModelParameters   map[string]interface{} `json:"modelParameters,omitempty"`
-	Usage             *Usage                 `json:"usage,omitempty"`
+	Usage             *Usage         `json:"usage,omitempty"`
 }
 
 // SessionWithTraces represents a session with its traces
