@@ -302,31 +302,8 @@ func printSession(session *langfuse.SessionWithTraces) {
 	fmt.Printf("  Total Traces: %d\n", len(session.Traces))
 
 	for i, trace := range session.Traces {
-		fmt.Printf("\n  Trace %d:\n", i+1)
-		fmt.Printf("    ID: %s\n", trace.ID)
-		if trace.Name != nil {
-			fmt.Printf("    Name: %s\n", *trace.Name)
-		}
-		fmt.Printf("    Timestamp: %s\n", trace.Timestamp)
-
-		if trace.Input != nil {
-			if inputMap, ok := trace.Input.(map[string]interface{}); ok {
-				if msg, exists := inputMap["message"]; exists {
-					fmt.Printf("    Input Message: %v\n", msg)
-				}
-			}
-		}
-
-		if trace.Output != nil {
-			if outputMap, ok := trace.Output.(map[string]interface{}); ok {
-				if answer, exists := outputMap["answer"]; exists {
-					fmt.Printf("    Output Answer: %v\n", answer)
-				}
-			}
-		}
-
-		fmt.Printf("    Observations: %d\n", len(trace.Observations))
-		fmt.Printf("    Scores: %d\n", len(trace.Scores))
+		fmt.Printf("\n======== Trace %d ========\n", i+1)
+		printTrace(&trace)
 	}
 }
 
