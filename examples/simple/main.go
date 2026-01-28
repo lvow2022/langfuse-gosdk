@@ -399,6 +399,54 @@ func main() {
 		Content: "Use get_weather for weather queries, calculator for math.",
 	}}
 
+	// 模拟 RAG 检索函数
+	simulateRAGRetrieval := func(query, category string) []map[string]interface{} {
+		docs := []map[string]interface{}{}
+
+		switch category {
+		case "weather":
+			docs = append(docs, map[string]interface{}{
+				"doc_id":       "weather-001",
+				"content":      "北京天气数据：实时温度22°C，晴朗，湿度45%，风向北风2级",
+				"source":       "weather-api",
+				"score":        0.95,
+				"retrieved_at": time.Now().Format(time.RFC3339),
+			})
+			docs = append(docs, map[string]interface{}{
+				"doc_id":       "weather-002",
+				"content":      "上海天气数据：实时温度26°C，多云，湿度60%，风向南风3级",
+				"source":       "weather-api",
+				"score":        0.87,
+				"retrieved_at": time.Now().Format(time.RFC3339),
+			})
+		case "math":
+			docs = append(docs, map[string]interface{}{
+				"doc_id":       "math-001",
+				"content":      "基础数学运算：加法规则，1+1=2，2+2=4，等等",
+				"source":       "math-kb",
+				"score":        0.98,
+				"retrieved_at": time.Now().Format(time.RFC3339),
+			})
+			docs = append(docs, map[string]interface{}{
+				"doc_id":       "math-002",
+				"content":      "计算器工具使用说明：支持加、减、乘、除四则运算",
+				"source":       "tool-docs",
+				"score":        0.85,
+				"retrieved_at": time.Now().Format(time.RFC3339),
+			})
+		default:
+			docs = append(docs, map[string]interface{}{
+				"doc_id":       "general-001",
+				"content":      "通用知识库：关于时间、日期和一般性问题回答指南",
+				"source":       "general-kb",
+				"score":        0.75,
+				"retrieved_at": time.Now().Format(time.RFC3339),
+			})
+		}
+
+		return docs
+	}
+
 	// 工具执行函数
 	executeTool := func(toolCall openai.ToolCall) string {
 		var args map[string]any
@@ -481,14 +529,53 @@ func main() {
 			Role: openai.ChatMessageRoleUser, Content: qa.question,
 		})
 
-		// 创建 generation
+		// ========== 模拟 RAG 检索 Span ==========
+		ragStartTime := time.Now()
+		ragSpanID, _ := trace.CreateSpan(langfuse.SpanParams{
+			ObservationParams: langfuse.ObservationParams{
+				Name:      ptr(fmt.Sprintf("rag-retrieval-round-%d", i+1)),
+				Input:     map[string]any{"query": qa.question, "retriever": "vector-store"},
+				StartTime: &ragStartTime,
+				Metadata: map[string]any{
+					"retrieval_method":    "semantic_search",
+					"top_k":               3,
+					"index_name":          "knowledge-base-v1",
+					"retrieval_duration_ms": 100, // 预期检索耗时
+				},
+			},
+		})
+
+		// 模拟 RAG 检索延迟 (100ms)
+		time.Sleep(100 * time.Millisecond)
+
+		// 模拟检索结果
+		rerankedDocs := simulateRAGRetrieval(qa.question, qa.category)
+
+		ragEndTime := time.Now()
+		ragDuration := ragEndTime.Sub(ragStartTime)
+		langfuseClient.UpdateSpan(ragSpanID, langfuse.SpanParams{
+			ObservationParams: langfuse.ObservationParams{
+				Output: map[string]any{
+					"retrieved_documents": rerankedDocs,
+					"total_docs_found":    len(rerankedDocs),
+					"query_rewrite":       qa.question, // 假设进行了查询重写
+				},
+			},
+			EndTime: &ragEndTime,
+		})
+
+		fmt.Printf("[Round %d] RAG: Retrieved %d documents in %v\n", i+1, len(rerankedDocs), ragDuration)
+		// =========================================
+
+		// 创建 generation，input 只包含实际的 LLM messages（保持纯净，便于 replay）
 		genStartTime := time.Now()
 		genParams := langfuse.GenerationParams{
 			SpanParams: langfuse.SpanParams{
 				ObservationParams: langfuse.ObservationParams{
 					Name:      ptr(fmt.Sprintf("llm-generation-round-%d", i+1)),
-					Input:     map[string]any{"message": qa.question},
 					StartTime: &genStartTime,
+					// 只包含实际传给 LLM 的输入，便于后续 replay 直接使用
+					Input:     messages,
 				},
 			},
 		}
@@ -617,10 +704,9 @@ func main() {
 				SpanParams: langfuse.SpanParams{
 					ObservationParams: langfuse.ObservationParams{
 						Output: map[string]any{
-							"tool_calls":            toolResults,
-							"tool_calls_detailed":   toolCallsDetailed,
-							"final_response":        finalAnswer,
-							"completion_start_time": genStartTime.Format(time.RFC3339Nano),
+							"tool_calls":          toolResults,
+							"tool_calls_detailed": toolCallsDetailed,
+							"final_response":      finalAnswer,
 						},
 					},
 					EndTime: &genEndTime,
@@ -641,7 +727,9 @@ func main() {
 			updateParams := langfuse.GenerationParams{
 				SpanParams: langfuse.SpanParams{
 					ObservationParams: langfuse.ObservationParams{
-						Output: map[string]any{"content": finalAnswer},
+						Output: map[string]any{
+							"content": finalAnswer,
+						},
 					},
 					EndTime: &genEndTime,
 				},
@@ -689,6 +777,7 @@ func main() {
 				"tokens_used":      usage.TotalTokens,
 				"tool_count":       len(assistantMsg.ToolCalls),
 				"replay_enabled":   true, // 标记此 trace 支持 replay
+				"has_rag":          true, // 标记此 trace 包含 RAG
 			},
 		})
 
