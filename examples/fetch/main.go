@@ -11,38 +11,15 @@ import (
 	langfuse "github.com/lvow2022/langfuse-gosdk/langfuse"
 )
 
-func getEnv(key, defaultValue string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultValue
-}
-
-func ptr[T any](v T) *T {
-	return &v
-}
-
 func main() {
-	// 从环境变量加载配置
-	publicKey := getEnv("LANGFUSE_PUBLIC_KEY", "pk-lf-613f327a-210d-492d-9b0e-1d15ff456dba")
-	secretKey := getEnv("LANGFUSE_SECRET_KEY", "sk-lf-dd707fbc-d87d-497a-86c0-7a464af5cfca")
-	baseURL := getEnv("LANGFUSE_BASE_URL", "http://192.168.0.55:3000")
-
-	if publicKey == "" || secretKey == "" {
-		log.Fatal("LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY must be set")
-	}
-
 	fmt.Println("========================================")
 	fmt.Println("  Langfuse Fetch Data Example")
 	fmt.Println("========================================")
-	fmt.Printf("Base URL: %s\n", baseURL)
-	fmt.Println("----------------------------------------\n")
 
-	// 初始化 Langfuse 客户端
 	config := langfuse.DefaultConfig()
-	config.PublicKey = publicKey
-	config.SecretKey = secretKey
-	config.BaseURL = baseURL
+	config.PublicKey = os.Getenv("LANGFUSE_PUBLIC_KEY")
+	config.SecretKey = os.Getenv("LANGFUSE_SECRET_KEY")
+	config.BaseURL = os.Getenv("LANGFUSE_BASE_URL")
 	config.Debug = true
 
 	client, err := langfuse.NewClient(config)

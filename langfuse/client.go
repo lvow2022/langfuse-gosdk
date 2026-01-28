@@ -186,7 +186,12 @@ func generateID() string {
 	return uuid.New().String()
 }
 
-// ptr is a helper function to get a pointer to a value
+// Ptr is a helper function to get a pointer to a value
+func Ptr[T any](v T) *T {
+	return &v
+}
+
+// ptr is a helper function to get a pointer to a value (internal use)
 func ptr[T any](v T) *T {
 	return &v
 }

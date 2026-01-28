@@ -14,8 +14,6 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
-func ptr[T any](v T) *T { return &v }
-
 func getEnv(key, defaultValue string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -509,7 +507,7 @@ func main() {
 
 		// 创建 trace，包含 replay_context
 		trace, err := langfuseClient.CreateTrace(langfuse.TraceParams{
-			Name:      ptr(fmt.Sprintf("chat-round-%d-%s", i+1, qa.category)),
+			Name:      langfuse.Ptr(fmt.Sprintf("chat-round-%d-%s", i+1, qa.category)),
 			UserID:    &userID,
 			SessionID: &sessionID,
 			Metadata: map[string]any{
@@ -534,7 +532,7 @@ func main() {
 		ragStartTime := time.Now()
 		ragSpanID, _ := trace.CreateSpan(langfuse.SpanParams{
 			ObservationParams: langfuse.ObservationParams{
-				Name:      ptr(fmt.Sprintf("rag-retrieval-round-%d", i+1)),
+				Name:      langfuse.Ptr(fmt.Sprintf("rag-retrieval-round-%d", i+1)),
 				Input:     map[string]any{"query": qa.question, "retriever": "vector-store"},
 				StartTime: &ragStartTime,
 				Metadata: map[string]any{
@@ -573,7 +571,7 @@ func main() {
 		genParams := langfuse.GenerationParams{
 			SpanParams: langfuse.SpanParams{
 				ObservationParams: langfuse.ObservationParams{
-					Name:      ptr(fmt.Sprintf("llm-generation-round-%d", i+1)),
+					Name:      langfuse.Ptr(fmt.Sprintf("llm-generation-round-%d", i+1)),
 					StartTime: &genStartTime,
 					// 只包含实际传给 LLM 的输入，便于后续 replay 直接使用
 					Input: messages,
@@ -595,7 +593,7 @@ func main() {
 			updateParams := langfuse.GenerationParams{
 				SpanParams: langfuse.SpanParams{
 					ObservationParams: langfuse.ObservationParams{
-						StatusMessage: ptr(err.Error()),
+						StatusMessage: langfuse.Ptr(err.Error()),
 						Level:         &level,
 					},
 					EndTime: &genEndTime,
@@ -634,7 +632,7 @@ func main() {
 				toolID, _ := trace.CreateTool(langfuse.ToolParams{
 					SpanParams: langfuse.SpanParams{
 						ObservationParams: langfuse.ObservationParams{
-							Name: ptr(fmt.Sprintf("tool-%s", tc.Function.Name)),
+							Name: langfuse.Ptr(fmt.Sprintf("tool-%s", tc.Function.Name)),
 							Input: map[string]any{
 								"tool_name": tc.Function.Name,
 								"tool_id":   tc.ID,
@@ -708,9 +706,9 @@ func main() {
 			// 更新 generation
 			genEndTime := time.Now()
 			usageLangfuse := langfuse.Usage{
-				Input:  ptr(usage.PromptTokens + resp2.Usage.PromptTokens),
-				Output: ptr(usage.CompletionTokens + resp2.Usage.CompletionTokens),
-				Total:  ptr(usage.TotalTokens + resp2.Usage.TotalTokens),
+				Input:  langfuse.Ptr(usage.PromptTokens + resp2.Usage.PromptTokens),
+				Output: langfuse.Ptr(usage.CompletionTokens + resp2.Usage.CompletionTokens),
+				Total:  langfuse.Ptr(usage.TotalTokens + resp2.Usage.TotalTokens),
 			}
 			updateParams := langfuse.GenerationParams{
 				SpanParams: langfuse.SpanParams{
@@ -732,9 +730,9 @@ func main() {
 			finalAnswer = assistantMsg.Content
 			genEndTime := time.Now()
 			usageLangfuse := langfuse.Usage{
-				Input:  ptr(usage.PromptTokens),
-				Output: ptr(usage.CompletionTokens),
-				Total:  ptr(usage.TotalTokens),
+				Input:  langfuse.Ptr(usage.PromptTokens),
+				Output: langfuse.Ptr(usage.CompletionTokens),
+				Total:  langfuse.Ptr(usage.TotalTokens),
 			}
 			updateParams := langfuse.GenerationParams{
 				SpanParams: langfuse.SpanParams{
@@ -803,7 +801,7 @@ func main() {
 
 	// 创建 session summary trace
 	summaryTrace, _ := langfuseClient.CreateTrace(langfuse.TraceParams{
-		Name:      ptr("session-summary"),
+		Name:      langfuse.Ptr("session-summary"),
 		UserID:    &userID,
 		SessionID: &sessionID,
 		Metadata: map[string]any{
