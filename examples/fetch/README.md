@@ -4,16 +4,15 @@ This example demonstrates how to fetch and retrieve data from Langfuse using the
 
 ## Features Demonstrated
 
-1. **Create Test Data** - Creates traces, spans, and generations
-2. **Fetch Single Trace** - Retrieve a specific trace by ID with all observations
-3. **Fetch Session** - Get all traces within a session
-4. **List Traces** - Paginated trace listing with filters
-5. **Replay Context** - Reconstruct conversation from fetched trace data
+1. **Fetch Single Trace** - Retrieve a specific trace by ID with all observations
+2. **Fetch Session** - Get all traces within a session
+3. **List Traces** - Paginated trace listing with filters
+4. **Replay Context** - Reconstruct conversation from fetched trace data
 
 ## Prerequisites
 
 - Go 1.24 or higher
-- Langfuse instance running (local or cloud)
+- Langfuse instance with existing data (traces/sessions)
 - Valid Langfuse API credentials
 
 ## Installation
@@ -30,12 +29,19 @@ go mod tidy
 Set the following environment variables:
 
 ```bash
+# Required
 export LANGFUSE_PUBLIC_KEY="pk-lf-..."
 export LANGFUSE_SECRET_KEY="sk-lf-..."
 export LANGFUSE_BASE_URL="http://localhost:3000"  # or https://cloud.langfuse.com
+
+# Optional - to fetch specific data
+export TRACE_ID="your-trace-id"           # Fetch specific trace
+export SESSION_ID="your-session-id"       # Fetch specific session
+export USER_ID="your-user-id"             # Filter traces by user
+export TAGS="your-tag"                    # Filter traces by tag
 ```
 
-Or use the defaults in the code (for testing only).
+**Note**: You need existing traces/sessions in your Langfuse instance. Get IDs from the Langfuse UI.
 
 ## Running the Example
 
@@ -45,15 +51,7 @@ go run main.go
 
 ## What This Example Does
 
-### 1. Create Test Data
-
-The example first creates sample data:
-- Two traces in the same session
-- Spans for RAG retrieval
-- Generations for LLM calls
-- Complete input/output/metadata
-
-### 2. Fetch by Trace ID
+### 1. Fetch by Trace ID
 
 ```go
 fetchedTrace, err := client.GetTrace(ctx, langfuse.GetTraceParams{
@@ -67,7 +65,7 @@ Returns:
 - All nested observations (spans, generations, events, tools)
 - Scores and evaluations
 
-### 3. Fetch by Session ID
+### 2. Fetch by Session ID
 
 ```go
 session, err := client.GetSession(ctx, langfuse.GetSessionParams{
@@ -80,7 +78,7 @@ Returns:
 - All traces in the session
 - Complete nested structure
 
-### 4. List Traces with Filters
+### 3. List Traces with Filters
 
 ```go
 tracesList, err := client.ListTraces(ctx, langfuse.ListTracesParams{
@@ -98,7 +96,7 @@ Supports:
 - Time range filtering
 - Tag filtering
 
-### 5. Replay Context Reconstruction
+### 4. Replay Context Reconstruction
 
 The example shows how to:
 - Extract conversation messages from trace data
