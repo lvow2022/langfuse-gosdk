@@ -254,3 +254,21 @@ func (c *Client) CreateSdkLog(params SdkLogParams) error {
 
 	return c.enqueue(event)
 }
+
+// UpdateTool updates an existing tool observation
+func (c *Client) UpdateTool(toolID string, params ToolParams) error {
+	body := observationToBody(params.ObservationParams, toolID)
+
+	if params.EndTime != nil {
+		body["endTime"] = params.EndTime.Format(time.RFC3339Nano)
+	}
+
+	event := Event{
+		ID:        generateID(),
+		Type:      EventTypeSpanUpdate,  // Tool 是 Span 的一种，使用 span-update
+		Timestamp: time.Now(),
+		Body:      body,
+	}
+
+	return c.enqueue(event)
+}
