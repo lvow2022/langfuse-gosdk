@@ -91,61 +91,6 @@ func main() {
 		fmt.Println()
 	}
 
-	// ==========================================
-	// 示例 3: 列出 Traces (分页查询)
-	// ==========================================
-	fmt.Println("=== Example 3: Listing Traces (Paginated) ===")
-
-	page := 1
-	limit := 5
-	params := langfuse.ListTracesParams{
-		Page:  &page,
-		Limit: &limit,
-	}
-
-	// 可选: 添加过滤条件
-	userID := getEnv("USER_ID", "")
-	if userID != "" {
-		params.UserID = &userID
-		fmt.Printf("Filtering by User ID: %s\n", userID)
-	}
-
-	if sessionID != "" {
-		params.SessionID = &sessionID
-		fmt.Printf("Filtering by Session ID: %s\n", sessionID)
-	}
-
-	tags := getEnv("TAGS", "")
-	if tags != "" {
-		params.Tags = []string{tags}
-		fmt.Printf("Filtering by Tag: %s\n", tags)
-	}
-
-	fmt.Println()
-
-	traces, err := client.ListTraces(ctx, params)
-	if err != nil {
-		log.Printf("Failed to list traces: %v\n", err)
-	} else {
-		printTracesList(traces)
-	}
-
-	// ==========================================
-	// 示例 4: 从 Trace 重建对话上下文
-	// ==========================================
-	if traceID != "" {
-		fmt.Println("\n=== Example 4: Replay Context Reconstruction ===")
-
-		trace, err := client.GetTrace(ctx, langfuse.GetTraceParams{
-			TraceID: traceID,
-		})
-		if err != nil {
-			log.Printf("Failed to fetch trace: %v\n", err)
-		} else {
-			reconstructContext(trace)
-		}
-	}
-
 	fmt.Println("\n========================================")
 	fmt.Println("=== Examples Complete ===")
 	fmt.Println("========================================")
@@ -165,8 +110,6 @@ func main() {
 	fmt.Println("  Set environment variables to fetch specific data:")
 	fmt.Println("  export TRACE_ID=\"your-trace-id\"")
 	fmt.Println("  export SESSION_ID=\"your-session-id\"")
-	fmt.Println("  export USER_ID=\"your-user-id\"")
-	fmt.Println("  export TAGS=\"your-tag\"")
 }
 
 // printTrace prints trace details in a readable format
@@ -269,125 +212,6 @@ func printSession(session *langfuse.SessionWithTraces) {
 		fmt.Printf("    Observations: %d\n", len(trace.Observations))
 		fmt.Printf("    Scores: %d\n", len(trace.Scores))
 	}
-}
-
-// printTracesList prints paginated traces list
-func printTracesList(traces *langfuse.PaginatedTraces) {
-	fmt.Printf("Pagination Info:\n")
-	fmt.Printf("  Page: %d/%d\n", traces.Meta.Page, traces.Meta.TotalPages)
-	fmt.Printf("  Total Items: %d\n", traces.Meta.TotalItems)
-	fmt.Printf("  Items in this page: %d\n\n", len(traces.Data))
-
-	for i, trace := range traces.Data {
-		fmt.Printf("[%d] Trace:\n", i+1)
-		fmt.Printf("    ID: %s\n", trace.ID)
-		if trace.Name != nil {
-			fmt.Printf("    Name: %s\n", *trace.Name)
-		}
-		if trace.UserID != nil {
-			fmt.Printf("    User ID: %s\n", *trace.UserID)
-		}
-		if trace.SessionID != nil {
-			fmt.Printf("    Session ID: %s\n", *trace.SessionID)
-		}
-		fmt.Printf("    Tags: %v\n", trace.Tags)
-		fmt.Printf("    Observations: %d\n", len(trace.Observations))
-		fmt.Printf("    Scores: %d\n", len(trace.Scores))
-		fmt.Println()
-	}
-}
-
-// reconstructContext demonstrates how to rebuild conversation from trace
-func reconstructContext(trace *langfuse.TraceWithFullDetails) {
-	fmt.Println("Reconstructing conversation from trace data:\n")
-
-	// 从 Input 提取用户消息
-	if trace.Input != nil {
-		if inputMap, ok := trace.Input.(map[string]interface{}); ok {
-			if userMsg, exists := inputMap["message"]; exists {
-				fmt.Printf("User Input:\n  %v\n\n", userMsg)
-			}
-		}
-	}
-
-	// 从 Output 提取助手回复
-	if trace.Output != nil {
-		if outputMap, ok := trace.Output.(map[string]interface{}); ok {
-			if assistantMsg, exists := outputMap["answer"]; exists {
-				fmt.Printf("Assistant Output:\n  %v\n\n", assistantMsg)
-			}
-		}
-	}
-
-	// 从 Observations 提取详细信息
-	fmt.Println("Observations Details:")
-	for i, obs := range trace.Observations {
-		fmt.Printf("\n[%d] %s", i+1, obs.Type)
-		if obs.Name != nil {
-			fmt.Printf(" - %s", *obs.Name)
-		}
-		fmt.Println()
-
-		if obs.Type == "GENERATION" {
-			// LLM Generation 信息
-			if obs.Input != nil {
-				fmt.Println("  Input:")
-				inputJSON, _ := json.MarshalIndent(obs.Input, "    ", "  ")
-				fmt.Printf("    %s\n", inputJSON)
-			}
-
-			if obs.Output != nil {
-				fmt.Println("  Output:")
-				outputJSON, _ := json.MarshalIndent(obs.Output, "    ", "  ")
-				fmt.Printf("    %s\n", outputJSON)
-			}
-
-			if obs.Usage != nil {
-				fmt.Printf("  Token Usage: input=%d, output=%d, total=%d\n",
-					ptrToInt(obs.Usage.Input),
-					ptrToInt(obs.Usage.Output),
-					ptrToInt(obs.Usage.Total))
-			}
-
-			if obs.Model != nil {
-				fmt.Printf("  Model: %s\n", *obs.Model)
-			}
-		} else if obs.Type == "SPAN" {
-			// Span 信息 (如 RAG retrieval)
-			if obs.Input != nil {
-				fmt.Println("  Input:")
-				inputJSON, _ := json.MarshalIndent(obs.Input, "    ", "  ")
-				fmt.Printf("    %s\n", inputJSON)
-			}
-
-			if obs.Output != nil {
-				fmt.Println("  Output:")
-				outputJSON, _ := json.MarshalIndent(obs.Output, "    ", "  ")
-				fmt.Printf("    %s\n", outputJSON)
-			}
-		} else if obs.Type == "TOOL" {
-			// Tool 调用信息
-			if obs.Input != nil {
-				fmt.Println("  Input:")
-				inputJSON, _ := json.MarshalIndent(obs.Input, "    ", "  ")
-				fmt.Printf("    %s\n", inputJSON)
-			}
-
-			if obs.Output != nil {
-				fmt.Println("  Output:")
-				outputJSON, _ := json.MarshalIndent(obs.Output, "    ", "  ")
-				fmt.Printf("    %s\n", outputJSON)
-			}
-		}
-	}
-
-	fmt.Println("\nContext Reconstruction Summary:")
-	fmt.Println("This trace data can be used to:")
-	fmt.Println("  - Replay the exact conversation")
-	fmt.Println("  - Analyze LLM behavior and token usage")
-	fmt.Println("  - Debug issues in production")
-	fmt.Println("  - Generate test datasets")
-	fmt.Println("  - Build conversation memory systems")
 }
 
 // Helper function to convert *int to int
