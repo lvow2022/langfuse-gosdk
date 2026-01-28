@@ -1,4 +1,4 @@
-module github.com/langfuse/langfuse-go
+module github.com/langfuse/langfuse-gosdk
 
 go 1.21
 
