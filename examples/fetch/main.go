@@ -11,6 +11,13 @@ import (
 	langfuse "github.com/lvow2022/langfuse-gosdk/langfuse"
 )
 
+func getEnv(key, defaultValue string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultValue
+}
+
 func main() {
 	fmt.Println("========================================")
 	fmt.Println("  Langfuse Fetch Data Example")
@@ -72,7 +79,7 @@ func main() {
 	fmt.Println("\n========================================")
 	fmt.Println("=== Examples Complete ===")
 	fmt.Println("========================================")
-	fmt.Printf("\nView your data in Langfuse UI:\n%s\n", baseURL)
+	fmt.Printf("\nView your data in Langfuse UI:\n%s\n", config.BaseURL)
 
 	if traceID != "" || sessionID != "" {
 		fmt.Println("\nUsed IDs:")

@@ -89,8 +89,8 @@ func main() {
 	// Step 2: define tool schema
 	tools := []openai.Tool{
 		{
-			Type: openai.ToolTypeFunction,
-			Function: openai.FunctionDefinition{
+			Type:     openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
 				Name:        "get_weather",
 				Description: "Get weather by city name",
 				Parameters: json.RawMessage(`{
@@ -144,7 +144,6 @@ func main() {
 	}
 
 	msg := resp.Choices[0].Message
-	genEndTime := time.Now()
 
 	// Step 4: model decided to call tool?
 	if len(msg.ToolCalls) > 0 {
@@ -219,7 +218,7 @@ func main() {
 			Total:  langfuse.Ptr(resp.Usage.TotalTokens + finalResp.Usage.TotalTokens),
 		}
 
-		var argsMap map[string]any
+		// Re-parse args for generation update
 		json.Unmarshal([]byte(toolCall.Function.Arguments), &argsMap)
 
 		langfuseClient.UpdateGeneration(genID, langfuse.GenerationParams{
