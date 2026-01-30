@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	langfuse "github.com/lvow2022/langfuse-gosdk/langfuse"
+	"github.com/lvow2022/langfuse-gosdk/langfuse"
 )
 
 func getEnv(key, defaultValue string) string {
